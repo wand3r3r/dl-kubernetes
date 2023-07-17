@@ -1,0 +1,23 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: plan-service
+  labels:
+    app: plan
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.plan.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    app: plan
+    {{- include "decisionlens.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.plan.selectorLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+  - protocol: TCP
+    port: {{ .Values.service.plan.port }} 
+    targetPort: {{ .Values.service.plan.port }}
+

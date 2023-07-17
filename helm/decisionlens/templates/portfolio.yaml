@@ -4,22 +4,51 @@ metadata:
   name: portfolio-deployment
   labels:
     app: portfolio
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.portfolio.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 6 }}
+  {{- end }}
+  {{- with .Values.service.portfolio.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.portfolio.replicas }}
   selector:
     matchLabels:
       app: portfolio
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.service.portfolio.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   template:
     metadata:
       labels:
         app: portfolio
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.portfolio.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.portfolio.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
-      {{ if .Values.jwt.publicKey }}
       volumes:
+      {{ if .Values.jwt.publicKey }}
       - name: jwt-keys-volume
         secret:
           secretName: jwt-keys-secret
       {{ end }}
+      {{- if .Values.service.portfolio.extraVolumes -}}
+      {{ toYaml .Values.service.portfolio.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: portfolio
         image: {{ .Values.service.image.url }}/{{ .Values.service.portfolio.tag }}
@@ -33,12 +62,15 @@ spec:
         ports:
         - containerPort: {{ .Values.service.portfolio.port }}    
         imagePullPolicy: Always
-        {{ if .Values.jwt.publicKey }}
         volumeMounts:
+        {{ if .Values.jwt.publicKey }}
         - name: jwt-keys-volume
           readOnly: true
           mountPath: /jwt-keys
         {{ end }}
+        {{- if .Values.service.portfolio.extraVolumeMounts -}}
+        {{ toYaml .Values.service.portfolio.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env:        
         - name: service.url.apigateway
           valueFrom:
@@ -46,7 +78,7 @@ spec:
               name: {{ .Release.Name }}-configmap
               key: apigateway-service-url
         - name: database.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/portfolio?useSSL=false&rewriteBatchedStatements=true           
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/portfolio?{{ include "decisionlens.jdbc.options" . }}
         - name: database.username
           valueFrom:
             secretKeyRef:
@@ -58,7 +90,7 @@ spec:
               name: {{ .Release.Name }}-secret
               key: database-password
         - name: database.dlconf.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?useSSL=false&rewriteBatchedStatements=true
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?{{ include "decisionlens.jdbc.options" . }}
         - name: database.dlconf.username
           valueFrom:
             secretKeyRef:
@@ -140,20 +172,15 @@ spec:
         - name: jwt.publicKey
           value: /jwt-keys/public_key.pub
         {{ end }}
+        {{- if .Values.service.portfolio.extraEnv -}}
+        {{ toYaml .Values.service.portfolio.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: portfolio-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred    
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: portfolio-service
-spec:
-  selector:
-    app: portfolio
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.portfolio.port }} 
-    targetPort: {{ .Values.service.portfolio.port }}
 

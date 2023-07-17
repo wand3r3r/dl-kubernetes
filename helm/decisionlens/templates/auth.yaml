@@ -2,24 +2,53 @@ kind: Deployment
 apiVersion: apps/v1
 metadata: 
   name: auth-deployment
-  labels:
+  labels: 
     app: auth
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.auth.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.auth.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.auth.replicas }}
   selector:
     matchLabels:
       app: auth
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.service.auth.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   template:
     metadata:
       labels:
         app: auth
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.auth.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.auth.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
-      {{ if .Values.jwt.publicKey }}
       volumes:
+      {{- if .Values.jwt.publicKey }}
       - name: jwt-keys-volume
         secret:
           secretName: jwt-keys-secret
-      {{ end }}
+      {{- end }}
+      {{- if .Values.service.auth.extraVolumes -}}
+      {{ toYaml .Values.service.auth.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: auth
         image: {{ .Values.service.image.url }}/{{ .Values.service.auth.tag }}
@@ -33,12 +62,15 @@ spec:
         ports:
         - containerPort: {{ .Values.service.auth.port }}    
         imagePullPolicy: Always
-        {{ if .Values.jwt.publicKey }}
         volumeMounts:
+        {{- if .Values.jwt.publicKey }}
         - name: jwt-keys-volume
           readOnly: true
           mountPath: /jwt-keys
-        {{ end }}
+        {{- end }}
+        {{- if .Values.service.auth.extraVolumeMounts -}}
+        {{ toYaml .Values.service.auth.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env:        
         - name: service.url.apigateway
           valueFrom:
@@ -46,7 +78,7 @@ spec:
               name: {{ .Release.Name }}-configmap
               key: apigateway-service-url
         - name: database.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/auth?useSSL=false&rewriteBatchedStatements=true           
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/auth?{{ include "decisionlens.jdbc.options" . }}
         - name: database.username
           valueFrom:
             secretKeyRef:
@@ -58,7 +90,7 @@ spec:
               name: {{ .Release.Name }}-secret
               key: database-password
         - name: database.dlconf.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?useSSL=false&rewriteBatchedStatements=true
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?{{ include "decisionlens.jdbc.options" . }}
         - name: database.dlconf.username
           valueFrom:
             secretKeyRef:
@@ -146,27 +178,21 @@ spec:
               key: access-token-header
         - name: jwt.issuer
           value: {{ .Values.jwt.issuer }}
-        {{ if .Values.jwt.publicKey }}
+        {{- if .Values.jwt.publicKey -}}
         - name: jwt.privateKey
           value: /jwt-keys/private_key.pk8
         - name: jwt.publicKey
           value: /jwt-keys/public_key.pub
-        {{ end }}
-
+        {{- end }}
+        {{- if .Values.service.auth.extraEnv -}}
+        {{ toYaml .Values.service.auth.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: auth-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred    
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: auth-service
-spec:
-  selector:
-    app: auth
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.auth.port }} 
-    targetPort: {{ .Values.service.auth.port }}
 

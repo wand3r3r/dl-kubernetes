@@ -4,16 +4,46 @@ metadata:
   name: apigateway-deployment
   labels:
     app: apigateway
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.apigateway.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.apigateway.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.apigateway.replicas }}
   selector:
     matchLabels:
       app: apigateway
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.service.apigateway.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   template:
     metadata:
       labels:
         app: apigateway
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.apigateway.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.apigateway.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
+      volumes:
+      {{- if .Values.service.apigateway.extraVolumes -}}
+      {{ toYaml .Values.service.apigateway.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: apigateway
         image: {{ .Values.service.image.url }}/{{ .Values.service.apigateway.tag }}
@@ -26,6 +56,10 @@ spec:
             cpu: "2000m"
         ports:
         - containerPort: {{ .Values.service.apigateway.port }}           
+        volumeMounts:
+        {{- if .Values.service.apigateway.extraVolumeMounts -}}
+        {{ toYaml .Values.service.apigateway.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env: 
         - name: service.url.integration
           valueFrom:
@@ -38,12 +72,6 @@ spec:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: portfolio-service-url  
-
-        - name: service.url.mldata
-          valueFrom:
-            configMapKeyRef:
-              name: {{ .Release.Name }}-configmap
-              key: mldata-service-url 
 
         - name: service.url.plan
           valueFrom:
@@ -68,20 +96,14 @@ spec:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: dlc-service-url  
-
+        {{- if .Values.service.apigateway.extraEnv -}}
+        {{ toYaml .Values.service.apigateway.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: apigateway-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred          
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: apigateway-service
-spec:
-  selector:
-    app: apigateway
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.apigateway.port }}
-    targetPort: {{ .Values.service.apigateway.port }}
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 

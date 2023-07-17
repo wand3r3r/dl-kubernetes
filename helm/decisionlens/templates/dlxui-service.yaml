@@ -1,0 +1,23 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dlxui-service
+  labels:
+    app: dlxui
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.apigateway.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    app: dlxui
+    {{- include "decisionlens.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.apigateway.selectorLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+  - protocol: TCP
+    port: {{ .Values.service.dlxui.port }}
+    targetPort: {{ .Values.service.dlxui.port }}
+

@@ -4,16 +4,46 @@ metadata:
   name: dlcui-deployment
   labels:
     app: dlcui
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.dlcui.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.dlcui.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.dlcui.replicas }}
   selector:
     matchLabels:
       app: dlcui
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+      {{- with .Values.service.dlcui.selectorLabels }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
   template:
     metadata:
       labels:
         app: dlcui
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.dlcui.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.dlcui.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:      
+      volumes:
+      {{- if .Values.service.dlcui.extraVolumes -}}
+      {{ toYaml .Values.service.dlcui.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: dlcui
         image: {{ .Values.service.image.url }}/{{ .Values.service.dlcui.tag }}
@@ -27,6 +57,10 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: {{ .Values.service.dlcui.port }}
+        volumeMounts:
+        {{- if .Values.service.dlcui.extraVolumeMounts -}}
+        {{ toYaml .Values.service.dlcui.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env:
         - name: CLIENT_ID
           valueFrom:
@@ -43,20 +77,15 @@ spec:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: dlx-api-url
+        {{- if .Values.service.dlcui.extraEnv -}}
+        {{ toYaml .Values.service.dlcui.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: dlcui-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: dlcui-service
-spec:
-  selector:
-    app: dlcui
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.dlcui.port }}
-    targetPort: {{ .Values.service.dlcui.port }}
 

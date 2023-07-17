@@ -1,63 +1,181 @@
+global:
+  imagePullSecrets:
+  - regcred
+  annotations: {}
+  podAnnotations: {} 
+  serviceAccount:
+    create: false
+
+# Enable or disable decision lens analytic services
+analytics:
+  pendo: true
+  google: true
+
+ingress:
+  ingressClassName: nginx
+  dlx:
+    annotations: {}
+    tls: []
+    hosts:
+    - host: dlx
+      paths:
+      - path: "/v1"
+        pathType: Prefix
+        serviceName: apigateway-service
+        port: 9005
+      - path: "/oauth/callback"
+        pathType: Prefix
+        serviceName: dlxui-service
+        port: 8089
+      - path: "/oauth"
+        pathType: Prefix
+        serviceName: apigateway-service
+        port: 9005
+      - path: "/.*-service"
+        pathType: Prefix
+        serviceName: apigateway-service
+        port: 9005
+      - path: "/"
+        pathType: Prefix
+        serviceName: dlxui-service
+        port: 8089
+  dlc:
+    annotations: {}
+    tls: []
+    hosts:
+    - host: dlc
+      paths:
+      - path: "/dl3-service-.*"
+        pathType: Prefix
+        serviceName: dlc-service
+        port: 8080
+      - path: "/dlm-service"
+        pathType: Prefix
+        serviceName: dlc-service
+        port: 8080
+      - path: "/"
+        pathType: Prefix
+        serviceName: dlcui-service
+        port: 8080
+
 service:
   image:
     url: 723504183657.dkr.ecr.us-east-1.amazonaws.com
   integration:
-    tag: decisionlens_downloads:integration-service_4.2.2
+    tag: decisionlens_downloads:integration-service_4.7.3
     port: 9000
     url: http://integration-service:9000
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   portfolio:
-    tag: decisionlens_downloads:portfolio-service_5.8.0
+    tag: decisionlens_downloads:portfolio-service_8.2.0
     port: 9001
     url: http://portfolio-service:9001
     replicas: 1
-  mldata:
-    tag: decisionlens_downloads:mldata-service_3.1.1
-    port: 9002
-    url: http://mldata-service:9002
-    replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   plan:
-    tag: decisionlens_downloads:plan-service_4.2.5
+    tag: decisionlens_downloads:plan-service_4.6.3
     port: 9003
     url: http://plan-service:9003
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   messaging:
-    tag: decisionlens_downloads:messaging-service_3.7.2
+    tag: decisionlens_downloads:messaging-service_3.12.3
     port: 9004
     url: http://messaging-service:9004
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   apigateway:
-    tag: decisionlens_downloads:apigateway-service_4.7.2
+    tag: decisionlens_downloads:apigateway-service_5.7.0
     version: master
     port: 9005
     url: http://apigateway-service:9005
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   auth:
-    tag: decisionlens_downloads:auth-service_4.2.0
+    tag: decisionlens_downloads:auth-service_5.5.5
     port: 9006
     url: http://auth-service:9006
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
+
   dlxui:
-    tag: decisionlens_downloads:dlx-ui_5.8.2
+    tag: decisionlens_downloads:dlx-ui_9.1.0
     port: 8089
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   dlc:
-    tag: decisionlens_downloads:dlc-service_1.21.49
+    tag: decisionlens_downloads:dlc-service_1.22.3
     port: 8080
     url: http://dlc-service:8080
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    annotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
   dlcui:
-    tag: decisionlens_downloads:dlc-ui_1.21.49
+    tag: decisionlens_downloads:dlc-ui_1.22.3
     port: 8088
     replicas: 1
+    labels: {}
+    selectorLabels: {}
+    podAnnotations: {}
+    extraEnv: []
+    extraVolumes: []
+    extraVolumeMounts: []
 
 rabbitmq:
-  image: 723504183657.dkr.ecr.us-east-1.amazonaws.com/decisionlens_downloads:rabbitmq_3.11.0
+  image: 723504183657.dkr.ecr.us-east-1.amazonaws.com/decisionlens_downloads:rabbitmq_3.12.1
   host: rabbitmq-service
   port: 5672
   stompPort: 61613
   username: guest
   password: guest
+  service:
+    type: LoadBalancer
+  podAnnotations: {}
+  labels: {}
+  selectorLabels: {}
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
 
 database:
   host: 10.0.0.17
@@ -65,13 +183,17 @@ database:
   username: root
   password: dl
   dlc: dl3
+  jdbc:
+    options:
+      - useSSL=false
+      - rewriteBatchedStatements=true
 
 mail:
   auth: true
   host: smtp.gmail.com
   port: 587
-  username:
-  password:
+  username: "changeme"
+  password: "changeme"
 
 memcached:
   servers: 10.0.0.17:11211
@@ -81,7 +203,7 @@ elastic:
     url: http://10.0.0.17:9200
 
 license:
-  key:
+  key: "changeme"
 
 jwt:
   secret: 6rILDDQjA-0yqrfH_9t2Cz8AJ2xH_Zs9l8v5k8RyQaI
@@ -98,5 +220,4 @@ dlx:
 access:
   token:
     header: Authorization
-
 

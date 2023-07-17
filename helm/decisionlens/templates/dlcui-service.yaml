@@ -1,0 +1,23 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: dlcui-service
+  labels:
+    app: dlcui
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.dlcui.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    app: dlcui
+    {{- include "decisionlens.selectorLabels" . | nindent 4 }}
+  {{- with .Values.service.dlcui.selectorLabels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+  - protocol: TCP
+    port: {{ .Values.service.dlcui.port }}
+    targetPort: {{ .Values.service.dlcui.port }}
+

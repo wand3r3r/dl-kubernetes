@@ -4,22 +4,51 @@ metadata:
   name: dlc-deployment
   labels:
     app: dlc
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.dlc.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.dlc.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.dlc.replicas }}
   selector:
     matchLabels:
       app: dlc
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.service.dlc.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   template:
     metadata:
       labels:
         app: dlc
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.dlc.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.dlc.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
-      {{ if .Values.jwt.publicKey }}
       volumes:
+      {{- if .Values.jwt.publicKey }}
       - name: jwt-keys-volume
         secret:
           secretName: jwt-keys-secret
-      {{ end }}
+      {{- end }}
+      {{- if .Values.service.dlc.extraVolumes -}}
+      {{ toYaml .Values.service.dlc.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: dlc
         image: {{ .Values.service.image.url }}/{{ .Values.service.dlc.tag }}
@@ -33,15 +62,18 @@ spec:
         ports:
         - containerPort: {{ .Values.service.dlc.port }}
         imagePullPolicy: Always
-        {{ if .Values.jwt.publicKey }}
         volumeMounts:
+        {{- if .Values.jwt.publicKey }}
         - name: jwt-keys-volume
           readOnly: true
           mountPath: /jwt-keys
-        {{ end }}
+        {{- end }}
+        {{- if .Values.service.dlc.extraVolumeMounts -}}
+        {{ toYaml .Values.service.dlc.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env:
         - name: database.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.dlc }}?useSSL=false&rewriteBatchedStatements=true&useUnicode=yes&characterEncoding=UTF-8
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.dlc }}?{{ include "decisionlens.dlc.jdbc.options" . }}
         - name: DB_USERNAME
           valueFrom:
             secretKeyRef:
@@ -72,6 +104,30 @@ spec:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: apigateway-service-url
+        - name: database.jdbcUrl
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dl3?{{ include "decisionlens.jdbc.options" . }}
+        - name: database.username
+          valueFrom:
+            secretKeyRef:
+              name: { { .Release.Name } }-secret
+              key: database-username
+        - name: database.password
+          valueFrom:
+            secretKeyRef:
+              name: { { .Release.Name } }-secret
+              key: database-password
+        - name: database.dlconf.jdbcUrl
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?{{ include "decisionlens.jdbc.options" . }}
+        - name: database.dlconf.username
+          valueFrom:
+            secretKeyRef:
+              name: { { .Release.Name } }-secret
+              key: database-username
+        - name: database.dlconf.password
+          valueFrom:
+            secretKeyRef:
+              name: { { .Release.Name } }-secret
+              key: database-password
         - name: cacheServers
           valueFrom:
             configMapKeyRef:
@@ -87,52 +143,52 @@ spec:
             secretKeyRef:
               name: {{ .Release.Name }}-secret
               key: jwt-secret
-        - name: RABBITMQ_HOST
+        - name: spring.rabbitmq.host
           valueFrom:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: rabbitmq-host
-        - name: RABBITMQ_PORT
+        - name: spring.rabbitmq.port
           valueFrom:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
-              key: rabbitmq-port
-        - name: RABBITMQ_USERNAME
+              key: rabbitmq-stompPort
+        - name: spring.rabbitmq.username
           valueFrom:
             secretKeyRef:
               name: {{ .Release.Name }}-secret
               key: rabbitmq-username
-        - name: RABBITMQ_PASSWORD
+        - name: spring.rabbitmq.password
           valueFrom:
             secretKeyRef:
               name: {{ .Release.Name }}-secret
               key: rabbitmq-password
-        - name: license.key
+        - name: DL_LICENSE_KEY
           valueFrom:
             secretKeyRef:
               name: {{ .Release.Name }}-secret
               key: dl-license-key
-        - name: mail.host
+        - name: spring.mail.host
           valueFrom:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: mail-host
-        - name: mail.port
+        - name: spring.mail.port
           valueFrom:
               configMapKeyRef:
                 name: {{ .Release.Name }}-configmap
                 key: mail-port
-        - name: mail.username
+        - name: spring.mail.username
           valueFrom:
               secretKeyRef:
                 name: {{ .Release.Name }}-secret
                 key: mail-username
-        - name: mail.password
+        - name: spring.mail.password
           valueFrom:
               secretKeyRef:
                 name: {{ .Release.Name }}-secret
                 key: mail-password
-        - name: mail.auth
+        - name: spring.mail.properties.mail.smtp.auth
           valueFrom:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
@@ -142,26 +198,21 @@ spec:
             configMapKeyRef:
               name: {{ .Release.Name }}-configmap
               key: access-token-header
-        {{ if .Values.jwt.publicKey }}
+        {{- if .Values.jwt.publicKey -}}
         - name: jwt.privateKey
           value: /jwt-keys/private_key.pk8
         - name: jwt.publicKey
           value: /jwt-keys/public_key.pub
-        {{ end }}
-
+        {{- end }}
+        {{- if .Values.service.dlc.extraEnv -}}
+        {{ toYaml .Values.service.dlc.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: dlc-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: dlc-service
-spec:
-  selector:
-    app: dlc
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.dlc.port }}
-    targetPort: {{ .Values.service.dlc.port }}
 

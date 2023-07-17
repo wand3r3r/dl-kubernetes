@@ -4,22 +4,51 @@ metadata:
   name: plan-deployment
   labels:
     app: plan
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.plan.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.plan.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.plan.replicas }}
   selector:
     matchLabels:
       app: plan
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.service.plan.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   template:
     metadata:
       labels:
         app: plan
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.plan.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.plan.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
-      {{ if .Values.jwt.publicKey }}
       volumes:
+      {{ if .Values.jwt.publicKey }}
       - name: jwt-keys-volume
         secret:
           secretName: jwt-keys-secret
       {{ end }}
+      {{- if .Values.service.plan.extraVolumes -}}
+      {{ toYaml .Values.service.plan.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: plan
         image: {{ .Values.service.image.url }}/{{ .Values.service.plan.tag }}
@@ -33,12 +62,15 @@ spec:
         ports:
         - containerPort: {{ .Values.service.plan.port }}    
         imagePullPolicy: Always
-        {{ if .Values.jwt.publicKey }}
         volumeMounts:
+        {{ if .Values.jwt.publicKey }}
         - name: jwt-keys-volume
           readOnly: true
           mountPath: /jwt-keys
         {{ end }}
+        {{- if .Values.service.plan.extraVolumeMounts -}}
+        {{ toYaml .Values.service.plan.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env:        
         - name: service.url.apigateway
           valueFrom:
@@ -46,7 +78,7 @@ spec:
               name: {{ .Release.Name }}-configmap
               key: apigateway-service-url
         - name: database.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/plan?useSSL=false&rewriteBatchedStatements=true           
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/plan?{{ include "decisionlens.jdbc.options" . }}
         - name: database.username
           valueFrom:
             secretKeyRef:
@@ -58,7 +90,7 @@ spec:
               name: {{ .Release.Name }}-secret
               key: database-password
         - name: database.dlconf.jdbcUrl
-          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?useSSL=false&rewriteBatchedStatements=true
+          value: jdbc:mysql://{{ .Values.database.host }}:{{ .Values.database.port }}/dlconf?{{ include "decisionlens.jdbc.options" . }}
         - name: database.dlconf.username
           valueFrom:
             secretKeyRef:
@@ -140,20 +172,14 @@ spec:
         - name: jwt.publicKey
           value: /jwt-keys/public_key.pub
         {{ end }}
+        {{- if .Values.service.plan.extraEnv -}}
+        {{ toYaml .Values.service.plan.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: plan-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred    
-
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: plan-service
-spec:
-  selector:
-    app: plan
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.plan.port }} 
-    targetPort: {{ .Values.service.plan.port }}
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 

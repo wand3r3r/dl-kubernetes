@@ -4,22 +4,51 @@ metadata:
   name: messaging-deployment
   labels:
     app: messaging
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.service.messaging.labels }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.service.messaging.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: {{ .Values.service.messaging.replicas }}
   selector:
     matchLabels:
       app: messaging
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.service.messaging.selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   template:
     metadata:
       labels:
         app: messaging
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.service.messaging.selectorLabels }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.service.messaging.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
-      {{ if .Values.jwt.publicKey }}
       volumes:
+      {{- if .Values.jwt.publicKey }}
       - name: jwt-keys-volume
         secret:
           secretName: jwt-keys-secret
-      {{ end }}
+      {{- end }}
+      {{- if .Values.service.messaging.extraVolumes -}}
+      {{ toYaml .Values.service.messaging.extraVolumes | nindent 6 }}
+      {{- end }}
       containers:
       - name: messaging
         image: {{ .Values.service.image.url }}/{{ .Values.service.messaging.tag }}
@@ -33,12 +62,15 @@ spec:
         ports:
         - containerPort: {{ .Values.service.messaging.port }}    
         imagePullPolicy: Always
-        {{ if .Values.jwt.publicKey }}
         volumeMounts:
+        {{- if .Values.jwt.publicKey }}
         - name: jwt-keys-volume
           readOnly: true
           mountPath: /jwt-keys
-        {{ end }}
+        {{- end }}
+        {{- if .Values.service.messaging.extraVolumeMounts -}}
+        {{ toYaml .Values.service.messaging.extraVolumeMounts | nindent 8 }}
+        {{- end }}
         env:        
         - name: service.url.apigateway
           valueFrom:
@@ -116,20 +148,15 @@ spec:
         - name: jwt.publicKey
           value: /jwt-keys/public_key.pub
         {{ end }}
+        {{- if .Values.service.messaging.extraEnv -}}
+        {{ toYaml .Values.service.messaging.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: messaging-service
+      {{- end }}
       imagePullSecrets:
-      - name: regcred    
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
 
-
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: messaging-service
-spec:
-  selector:
-    app: messaging
-  ports:
-  - protocol: TCP
-    port: {{ .Values.service.messaging.port }} 
-    targetPort: {{ .Values.service.messaging.port }}
 

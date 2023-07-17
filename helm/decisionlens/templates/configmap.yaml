@@ -2,6 +2,8 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: {{ .Release.Name }}-configmap
+  labels:
+    {{- include "decisionlens.labels" . | nindent 4 }}
 data: 
   database-host: {{ .Values.database.host | quote }}
   database-port: {{ .Values.database.port | quote }}
@@ -10,19 +12,19 @@ data:
   elastic-service-url: {{ .Values.elastic.server.url }}
   rabbitmq-host: {{ .Values.rabbitmq.host }}
   rabbitmq-port: {{ .Values.rabbitmq.port | quote }}
+  rabbitmq-stompPort: {{ .Values.rabbitmq.stompPort | quote }}
   mail-host: {{ .Values.mail.host }}
   mail-port: {{ .Values.mail.port | quote }}
   mail-auth: {{ .Values.mail.auth | quote }}
-  dlx-api-url: {{ .Values.dlx.api.url }}
-  apigateway-service-url: {{ .Values.service.apigateway.url }}
-  integration-service-url: {{ .Values.service.integration.url }}
-  portfolio-service-url: {{ .Values.service.portfolio.url }}
-  mldata-service-url: {{ .Values.service.mldata.url }}
-  plan-service-url: {{ .Values.service.plan.url }}
-  messaging-service-url: {{ .Values.service.messaging.url }}
-  auth-service-url: {{ .Values.service.auth.url }}
+  dlx-api-url: {{ .Values.dlx.api.url | quote }}
+  apigateway-service-url: {{ .Values.service.apigateway.url | quote }}
+  integration-service-url: {{ .Values.service.integration.url | quote }}
+  portfolio-service-url: {{ .Values.service.portfolio.url  | quote}}
+  plan-service-url: {{ .Values.service.plan.url | quote }}
+  messaging-service-url: {{ .Values.service.messaging.url | quote }}
+  auth-service-url: {{ .Values.service.auth.url  | quote}}
   dlc-service-url: http://dlc-service:{{ .Values.service.dlc.port }}
-  client-id: {{ .Values.dlx.ui.clientId}}
+  client-id: {{ .Values.dlx.ui.clientId | quote }}
   access-token-header: {{ .Values.access.token.header | quote }}
   config.json: |
     {
@@ -33,6 +35,10 @@ data:
           "clientId": {{ .Values.dlx.ui.clientId | quote }},
           "authServiceUrl": {{ .Values.dlx.api.url | quote }},
           "accessTokenHeader": {{ .Values.access.token.header | quote }}    
+       },
+       "analytics": { 
+         "pendoEnabled": {{ .Values.analytics.pendo }},
+         "googleAnalyticsEnabled": {{ .Values.analytics.google }}
        }
     }
 

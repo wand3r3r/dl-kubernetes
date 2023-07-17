@@ -1,0 +1,66 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata: 
+  name: rabbitmq-deployment
+  labels:
+    app: rabbitmq
+    {{- include "decisionlens.labels" . | nindent 4 }}
+  {{- with .Values.rabbitmq.labels }}
+    {{- toYaml . | nindent 4  }}
+  {{- end }}
+  annotations:
+  {{- with .Values.global.annotations }}
+    {{- toYaml . | nindent 6 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+      {{- include "decisionlens.selectorLabels" . | nindent 6 }}
+    {{- with .Values.rabbitmq.selectorLabels }}
+      {{- toYaml . | nindent 6  }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+        {{- include "decisionlens.selectorLabels" . | nindent 8 }}
+      {{- with .Values.rabbitmq.selectorLabels }}
+        {{- toYaml . | nindent 8  }}
+      {{- end }}
+      annotations:
+      {{- with .Values.global.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.rabbitmq.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      volumes:
+      {{- if .Values.rabbitmq.extraVolumes -}}
+      {{ toYaml .Values.rabbitmq.extraVolumes | nindent 6 }}
+      {{- end }}
+      containers:
+      - name: rabbitmq
+        image: {{ .Values.rabbitmq.image }}
+        ports:       
+        - containerPort: {{ .Values.rabbitmq.port }}
+        - containerPort: {{ .Values.rabbitmq.stompPort }}
+        volumeMounts:
+        {{- if .Values.rabbitmq.extraVolumeMounts -}}
+        {{ toYaml .Values.rabbitmq.extraVolumeMounts | nindent 8 }}
+        {{- end }}
+        env:
+        {{- if .Values.rabbitmq.extraEnv -}}
+        {{ toYaml .Values.rabbitmq.extraEnv | nindent 8 }}
+        {{- end }}
+      {{- if .Values.global.serviceAccount.create }}
+      serviceAccountName: rabbitmq-service
+      {{- end }}
+      imagePullSecrets:
+      {{- range .Values.global.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
+
+  
